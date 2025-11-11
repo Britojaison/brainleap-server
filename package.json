@@ -1,0 +1,37 @@
+{
+  "name": "brainleap-backend",
+  "version": "0.1.0",
+  "description": "Node/Express backend for BrainLeap AI-enabled learning app",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "lint": "eslint \"src/**/*.{js,ts}\"",
+    "test": "NODE_ENV=test vitest"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.8.0",
+    "nodemon": "^3.1.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "ci": {
+    "ai_integration_notes": [
+      "Future /ai routes should call a dedicated AI service module before persisting to Supabase."
+    ]
+  }
+}
+
