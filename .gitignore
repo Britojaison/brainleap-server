@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Builds / Logs
+dist/
+coverage/
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+*.pid
+*.seed
+*.log
+
+# Environment / Secrets
+.env
+*.env
+.env.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Tests
+/test-results/
+
+# Supabase generated files
+supabase/.temp/
+
