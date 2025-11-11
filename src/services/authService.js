@@ -4,7 +4,26 @@ import jwt from 'jsonwebtoken';
 import { getClient } from '../config/database.js';
 import { findUserByEmail, insertUser } from '../models/userModel.js';
 
+const isMockAuth = process.env.MOCK_AUTH !== 'false';
+const buildMockResponse = (email) => {
+  const secret = process.env.JWT_SECRET || 'mock-secret';
+  const mockUser = {
+    id: 'mock-user',
+    email,
+  };
+
+  const token = jwt.sign({ id: mockUser.id, email: mockUser.email }, secret, {
+    expiresIn: '12h',
+  });
+
+  return { token, user: mockUser };
+};
+
 export const loginUser = async ({ email, password }) => {
+  if (isMockAuth) {
+    return buildMockResponse(email);
+  }
+
   const user = await findUserByEmail(email);
   if (!user) {
     throw new Error('Invalid credentials');
@@ -21,6 +40,10 @@ export const loginUser = async ({ email, password }) => {
 };
 
 export const registerUser = async ({ email, password }) => {
+  if (isMockAuth) {
+    return buildMockResponse(email).user;
+  }
+
   const existing = await findUserByEmail(email);
   if (existing) {
     throw new Error('Account already exists');

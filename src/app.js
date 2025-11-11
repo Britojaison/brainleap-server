@@ -3,11 +3,19 @@ import morgan from 'morgan';
 import cors from 'cors';
 
 import { loadEnv } from './config/env.js';
+import { initDatabase } from './config/database.js';
 import { logger } from './config/logger.js';
 import { registerRoutes } from './routes/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 loadEnv();
+
+const isMockAuth = process.env.MOCK_AUTH !== 'false';
+if (isMockAuth) {
+  logger.warn('MOCK_AUTH is enabled. Supabase will not be initialised.');
+} else {
+  initDatabase();
+}
 
 const app = express();
 
