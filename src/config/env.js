@@ -13,12 +13,12 @@ export const loadEnv = () => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const projectRoot = path.resolve(__dirname, '..', '..');
-  const envPath = path.resolve(projectRoot, 'env', '.env');
+  const envPath = path.resolve(projectRoot, '.env');
 
   if (!fs.existsSync(envPath)) {
     throw new Error(
       `Environment file not found at ${envPath}. ` +
-        'Create the file based on env/.env.example and restart the server.',
+        'Create the .env file in the root directory and restart the server.',
     );
   }
 
