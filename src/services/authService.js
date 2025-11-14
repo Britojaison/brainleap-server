@@ -1,8 +1,6 @@
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import { getClient } from '../config/database.js';
-import { findUserByEmail, insertUser } from '../models/userModel.js';
 
 const isMockAuth = process.env.MOCK_AUTH !== 'false';
 const buildMockResponse = (email) => {
@@ -24,19 +22,25 @@ export const loginUser = async ({ email, password }) => {
     return buildMockResponse(email);
   }
 
-  const user = await findUserByEmail(email);
-  if (!user) {
-    throw new Error('Invalid credentials');
+  const client = getClient();
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    throw new Error(`Supabase login failed: ${error.message}`);
   }
 
-  const isMatch = await bcrypt.compare(password, user.password_hash);
-  if (!isMatch) {
-    throw new Error('Invalid credentials');
+  if (!data.session || !data.user) {
+    throw new Error('Supabase login did not return a session');
   }
 
-  const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '12h' });
-
-  return { token, user: { id: user.id, email: user.email } };
+  return {
+    token: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+    },
+  };
 };
 
 export const registerUser = async ({ email, password }) => {
@@ -44,23 +48,19 @@ export const registerUser = async ({ email, password }) => {
     return buildMockResponse(email).user;
   }
 
-  const existing = await findUserByEmail(email);
-  if (existing) {
-    throw new Error('Account already exists');
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
   const client = getClient();
-
-  const { data, error } = await client
-    .from('users')
-    .insert({ email, password_hash: passwordHash })
-    .select()
-    .single();
+  const { data, error } = await client.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
 
   if (error) {
-    throw error;
+    throw new Error(`Supabase registration failed: ${error.message}`);
   }
 
-  return { id: data.id, email: data.email };
+  return {
+    id: data.user.id,
+    email: data.user.email,
+  };
 };
