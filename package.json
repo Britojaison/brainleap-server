@@ -11,19 +11,19 @@
     "test": "NODE_ENV=test vitest"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
-    "bcryptjs": "^2.4.3",
+    "@supabase/supabase-js": "^2.81.1",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "winston": "^3.13.0"
+    "morgan": "^1.10.1",
+    "winston": "^3.18.3"
   },
   "devDependencies": {
-    "eslint": "^9.8.0",
-    "nodemon": "^3.1.0",
-    "vitest": "^1.6.0"
+    "eslint": "^9.39.1",
+    "nodemon": "^3.1.11",
+    "vitest": "^4.0.8"
   },
   "engines": {
     "node": ">=18.0.0"
