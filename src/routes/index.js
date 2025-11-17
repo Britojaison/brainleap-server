@@ -1,9 +1,14 @@
 import authRoutes from './authRoutes.js';
 import userRoutes from './userRoutes.js';
+import practiceRoutes from './practiceRoutes.js';
+import visionRoutes from './visionRoutes.js';
+import aiRoutes from './aiRoutes.js';
 
 export const registerRoutes = (app) => {
-  app.use('/auth', authRoutes);
-  app.use('/users', userRoutes);
-
-  // TODO: Add `/ai` routes for hint and evaluation endpoints once AI service is wired.
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/practice', practiceRoutes);
+  app.use('/api/vision', visionRoutes);
+  app.use('/api/ai', aiRoutes);
 };
