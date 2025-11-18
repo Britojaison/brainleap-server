@@ -3,10 +3,40 @@ import { successResponse, errorResponse } from '../utils/responseHelper.js';
 import { logger } from '../config/logger.js';
 
 export const requestHint = async (req, res) => {
-  return res.status(503).json({
-    success: false,
-    message: 'AI hint service is not yet implemented on the backend.',
-  });
+  try {
+    const { question, imageBase64, mimeType } = req.body;
+
+    if (!question || question.trim() === '') {
+      return errorResponse(res, 'Question is required for hint.', 400);
+    }
+
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return errorResponse(res, 'Canvas image is required for hint.', 400);
+    }
+
+    logger.info(`Generating hint for question: ${question.substring(0, 50)}...`);
+
+    // Decode base64 image
+    const base64Data = imageBase64.includes(',')
+      ? imageBase64.split(',')[1]
+      : imageBase64;
+
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    logger.info(`Hint request - Image buffer size: ${imageBuffer.length} bytes`);
+
+    // Import the hint service function
+    const { generateHintFromImage } = await import('../services/aiEvaluationService.js');
+    const hint = await generateHintFromImage(question, imageBuffer, mimeType || 'image/png');
+
+    successResponse(res, {
+      title: hint.title,
+      explanation: hint.explanation,
+      nextSteps: hint.nextSteps || [],
+    });
+  } catch (error) {
+    logger.error('AI hint generation failed', error);
+    errorResponse(res, error.message || 'Hint generation failed. Please try again.');
+  }
 };
 
 export const evaluateCanvas = async (req, res) => {
