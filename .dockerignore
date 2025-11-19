@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+npm-debug.log
+# package-lock.json is needed for npm ci, so don't exclude it
+
+# Environment files (should be provided via volumes or env vars)
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Test files
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+tests
+__tests__
+
+# Build artifacts
+dist
+build
+*.log
+
+# Documentation
+README.md
+*.md
+
