@@ -28,18 +28,15 @@ export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') 
   const model = getModel();
 
   try {
-    const result = await model.generateContent({
+    // STEP 1: Extract raw text from image
+    console.log('\n=== STEP 1: EXTRACTING TEXT FROM IMAGE ===');
+    const extractResult = await model.generateContent({
       contents: [
         {
           role: 'user',
           parts: [
             {
-              text:
-                'You are an OCR assistant that specializes in handwritten and typeset mathematical content. ' +
-                'Extract ALL text from this image, preserving mathematical notation, equations, and line breaks. ' +
-                'This may include questions, solutions, steps, or any mathematical expressions. ' +
-                'Preserve the exact structure and formatting. Use LaTeX notation for mathematical symbols. ' +
-                'Do not add commentary—return only the extracted text exactly as it appears.',
+              text: 'Extract ALL text from this image. Use LaTeX notation ($...$) for math. Just extract the text as you see it.',
             },
             {
               inlineData: {
@@ -52,16 +49,80 @@ export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') 
       ],
       generationConfig: {
         temperature: 0,
-        maxOutputTokens: 4096, // Increased to handle longer solutions
+        maxOutputTokens: 4096,
       },
     });
 
-    const text = result.response?.candidates?.[0]?.content?.parts
+    let rawText = extractResult.response?.candidates?.[0]?.content?.parts
       ?.map((part) => part.text ?? '')
-      .join('\n')
+      .join('')
       .trim();
 
-    return text ?? '';
+    console.log('📝 Raw extracted text:');
+    console.log('---START---');
+    console.log(rawText);
+    console.log('---END---');
+
+    if (!rawText) {
+      return '';
+    }
+
+    // STEP 2: Ask Gemini to reformat it as a proper solution
+    console.log('\n=== STEP 2: REFORMATTING AS SOLUTION ===');
+    const formatResult = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text:
+                'Reformat this math solution text with proper line breaks. Each line should be on a NEW LINE.\n\n' +
+                'INPUT TEXT:\n' +
+                rawText +
+                '\n\n' +
+                'REFORMATTING RULES:\n' +
+                '• Put EACH statement on its OWN line\n' +
+                '• Put EACH equation on its OWN line\n' +
+                '• Add blank lines between sections\n' +
+                '• Keep LaTeX: $...$\n' +
+                '• Output should look like a SOLUTION, not a paragraph\n\n' +
+                'EXAMPLE INPUT:\n' +
+                '"Given a=2 b=3 Therefore D=b^2-4ac=9-8=1 Hence real roots"\n\n' +
+                'EXAMPLE OUTPUT (each line separate):\n' +
+                'Given $a=2$, $b=3$\n\nTherefore $D = b^2 - 4ac$\n$= 9 - 8$\n$= 1$\n\nHence real roots\n\n' +
+                '⚠️ IMPORTANT: Actually press ENTER after each line. Do NOT write "\\n" - actually create new lines!\n\n' +
+                'Now reformat the INPUT TEXT above (remember: actual line breaks, not \\n):',
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 4096,
+      },
+    });
+
+    let formattedText = formatResult.response?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? '')
+      .join('')
+      .trim();
+
+    console.log('📝 Formatted text (raw):');
+    console.log('---START---');
+    console.log(formattedText);
+    console.log('---END---');
+    console.log('📝 Line breaks found:', (formattedText?.match(/\n/g) || []).length);
+    
+    // Check if Gemini returned literal \n instead of actual newlines
+    if (formattedText && formattedText.includes('\\n') && !formattedText.includes('\n')) {
+      console.log('⚠️ Detected literal \\n - converting to actual newlines');
+      formattedText = formattedText.replace(/\\n/g, '\n');
+    }
+    
+    console.log('📝 Final line breaks:', (formattedText?.match(/\n/g) || []).length);
+    console.log('==============================\n');
+
+    return formattedText ?? rawText ?? '';
   } catch (error) {
     const message = error.message || error.toString();
     throw new Error(`Gemini Vision error: ${message}`);
