@@ -4,7 +4,7 @@ import { logger } from '../config/logger.js';
 
 export const requestHint = async (req, res) => {
   try {
-    const { question, imageBase64, mimeType } = req.body;
+    const { question, imageBase64, mimeType, canvasText } = req.body;
 
     if (!question || question.trim() === '') {
       return errorResponse(res, 'Question is required for hint.', 400);
@@ -15,6 +15,11 @@ export const requestHint = async (req, res) => {
     }
 
     logger.info(`Generating hint for question: ${question.substring(0, 50)}...`);
+    logger.info(`Canvas text provided: ${canvasText ? 'YES' : 'NO'}`);
+    if (canvasText) {
+      logger.info(`Canvas text length: ${canvasText.length} chars`);
+      logger.info(`Canvas text preview: ${canvasText.substring(0, 100)}...`);
+    }
 
     // Decode base64 image
     const base64Data = imageBase64.includes(',')
@@ -26,7 +31,7 @@ export const requestHint = async (req, res) => {
 
     // Import the hint service function
     const { generateHintFromImage } = await import('../services/aiEvaluationService.js');
-    const hint = await generateHintFromImage(question, imageBuffer, mimeType || 'image/png');
+    const hint = await generateHintFromImage(question, imageBuffer, mimeType || 'image/png', canvasText);
 
     successResponse(res, {
       title: hint.title,
@@ -68,7 +73,7 @@ export const evaluateCanvas = async (req, res) => {
 
 export const evaluateCanvasImage = async (req, res) => {
   try {
-    const { question, imageBase64, mimeType } = req.body;
+    const { question, imageBase64, mimeType, canvasText } = req.body;
 
     if (!question || question.trim() === '') {
       return errorResponse(res, 'Question is required for evaluation.', 400);
@@ -81,6 +86,11 @@ export const evaluateCanvasImage = async (req, res) => {
     logger.info(`Evaluating canvas image for question: ${question.substring(0, 50)}...`);
     logger.info(`Image base64 length: ${imageBase64.length}`);
     logger.info(`MIME type: ${mimeType || 'image/png'}`);
+    logger.info(`Canvas text provided: ${canvasText ? 'YES' : 'NO'}`);
+    if (canvasText) {
+      logger.info(`Canvas text length: ${canvasText.length} chars`);
+      logger.info(`Canvas text preview: ${canvasText.substring(0, 100)}...`);
+    }
 
     // Decode base64 image
     const base64Data = imageBase64.includes(',')
@@ -104,7 +114,7 @@ export const evaluateCanvasImage = async (req, res) => {
     const isPNG = header.startsWith('89504e47');
     logger.info(`Is valid PNG: ${isPNG}`);
 
-    const evaluation = await evaluateImageService(question, imageBuffer, mimeType || 'image/png');
+    const evaluation = await evaluateImageService(question, imageBuffer, mimeType || 'image/png', canvasText);
 
     successResponse(res, {
       title: evaluation.title,
