@@ -35,9 +35,11 @@ export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') 
           parts: [
             {
               text:
-                'You are an OCR assistant that specializes in handwritten and typeset math/science questions. ' +
-                'Extract the exact question text from this image, preserving notation and line breaks. ' +
-                'Do not add commentary—return only the question text.',
+                'You are an OCR assistant that specializes in handwritten and typeset mathematical content. ' +
+                'Extract ALL text from this image, preserving mathematical notation, equations, and line breaks. ' +
+                'This may include questions, solutions, steps, or any mathematical expressions. ' +
+                'Preserve the exact structure and formatting. Use LaTeX notation for mathematical symbols. ' +
+                'Do not add commentary—return only the extracted text exactly as it appears.',
             },
             {
               inlineData: {
@@ -50,7 +52,7 @@ export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') 
       ],
       generationConfig: {
         temperature: 0,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 4096, // Increased to handle longer solutions
       },
     });
 

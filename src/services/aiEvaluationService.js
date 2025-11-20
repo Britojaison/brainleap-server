@@ -40,7 +40,7 @@ const initializeGemini = () => {
   }
 };
 
-export const generateHintFromImage = async (question, imageBuffer, mimeType = 'image/png') => {
+export const generateHintFromImage = async (question, imageBuffer, mimeType = 'image/png', canvasText = null) => {
   try {
     initializeGemini();
 
@@ -50,42 +50,152 @@ export const generateHintFromImage = async (question, imageBuffer, mimeType = 'i
     logger.info(`Question: ${question.substring(0, 100)}`);
     logger.info(`Image size: ${imageBuffer.length} bytes`);
     logger.info(`Base64 length: ${base64Data.length}`);
+    logger.info(`Canvas text: ${canvasText ? 'YES' : 'NO'}`);
+    if (canvasText) {
+      logger.info(`Canvas text content (first 200 chars): ${canvasText.substring(0, 200)}`);
+    }
     logger.info(`==================`);
 
-    const prompt = `You are a supportive math tutor. A student is working on this problem and needs a hint.
+    let prompt = `You are a supportive math tutor. A student is working on this problem and needs guidance.
 
-PROBLEM: ${question}
+⚠️ READ THE PROBLEM CAREFULLY - Understand what is being asked before analyzing the solution!
 
-Look at their whiteboard work in the image. Analyze what they've written and provide ONE strategic hint.
+PROBLEM/QUESTION: ${question}
 
+WHAT IS THE STUDENT ASKED TO DO?
+- Read the problem above carefully
+- Understand the specific task (solve, prove, simplify, find, etc.)
+- Check if the student completed THAT SPECIFIC TASK
+`;
+
+    if (canvasText && canvasText.trim().length > 0) {
+      prompt += `
+STUDENT'S WRITTEN SOLUTION (extracted text from canvas):
+${canvasText}
+
+ANALYSIS STEPS:
+1. READ THE PROBLEM: What is the student asked to do? (solve? prove? simplify? find?)
+2. READ THE SOLUTION: Look at BOTH the whiteboard image AND the extracted text above
+3. CHECK COMPLETION: Did the student complete the SPECIFIC task asked in the problem?
+   - If the problem asks to "prove" → Did they provide a proof?
+   - If the problem asks to "solve" → Did they find the solution?
+   - If the problem asks to "simplify" → Did they simplify it?
+   - If the problem asks to "find" → Did they find the answer?
+4. VERIFY CORRECTNESS: Is their work correct for the SPECIFIC task?
+5. RESPOND:
+   - If COMPLETE & CORRECT for the task → Say "Perfect!" or "Solution complete!"
+   - If INCOMPLETE or WRONG TASK → Provide guidance
+`;
+    } else {
+      prompt += `
+Look at their whiteboard work in the image.
+
+ANALYSIS STEPS:
+1. READ THE PROBLEM: What is the student asked to do?
+2. READ THE SOLUTION: What did they write on the whiteboard?
+3. CHECK COMPLETION: Did they complete the SPECIFIC task asked?
+4. VERIFY CORRECTNESS: Is their work correct?
+5. RESPOND:
+   - If COMPLETE & CORRECT → Say "Perfect!" or "Solution complete!"
+   - If INCOMPLETE → Provide guidance
+`;
+    }
+
+    prompt += `
 YOUR RESPONSE FORMAT (be concise):
 
-TITLE: [Short encouraging phrase: "Good start!", "Almost there!", "Let's think about this", etc.]
-HINT: [2-3 sentences: What they did right + specific next step + why it helps]
-NEXT_STEP: [One concrete action: "Subtract 5 from both sides" or "Factor out the common term"]
+TITLE: [Based on completion status]
+- If COMPLETE & CORRECT: "Perfect solution!" or "Excellent work!"
+- If INCOMPLETE: "Almost there!" or "Good progress!"
+- If JUST STARTED: "Good start!"
+- If BLANK: "Let's begin!"
 
-EXAMPLES:
+HINT: [2-3 sentences]
+- If COMPLETE: Praise their work and confirm it's correct
+- If INCOMPLETE: What they did right + what's missing
+- If BLANK: How to start
 
-Problem: "Solve 2x + 5 = 13" | Student wrote "2x = 8"
+NEXT_STEP: [One action]
+- If COMPLETE: "Solution complete! Well done."
+- If INCOMPLETE: Specific next step
+- If BLANK: First step to take
+
+⚠️ CRITICAL: READ THE PROBLEM FIRST! Understand what task is being asked (solve, prove, simplify, find, etc.) before evaluating the solution!
+
+EXAMPLES OF COMPLETE SOLUTIONS (say "Perfect!" for these):
+
+Problem: "Solve 2x + 5 = 13" (Task: SOLVE for x)
+Student: "2x + 5 = 13, 2x = 8, x = 4" ✓ COMPLETE - Found x
+TITLE: Perfect solution!
+HINT: Excellent work! You correctly isolated the variable by subtracting 5 from both sides, then divided by 2 to get the final answer x = 4. Your solution is complete and correct.
+NEXT_STEP: Solution complete! You can move on to the next problem.
+
+Problem: "Prove that x² - 4 = (x+2)(x-2) is a quadratic equation" (Task: PROVE it's quadratic)
+Student: "x² - 4 = (x+2)(x-2), Expanding: x² + 2x - 2x - 4 = x² - 4, This is quadratic because highest power is 2" ✓ COMPLETE - Proved it's quadratic
+TITLE: Perfect proof!
+HINT: Excellent! You correctly expanded the expression and identified that it's quadratic because the highest power of x is 2. Your proof is complete and correct.
+NEXT_STEP: Solution complete! Well done.
+
+Problem: "Show that 2x² + 3x - 5 is a quadratic equation" (Task: SHOW/PROVE it's quadratic)
+Student: "2x² + 3x - 5, Highest degree = 2, Form: ax² + bx + c where a=2, b=3, c=-5, Therefore it's quadratic" ✓ COMPLETE - Showed it's quadratic
+TITLE: Perfect!
+HINT: Correct! You identified the standard quadratic form ax² + bx + c and confirmed the highest degree is 2. Your explanation is complete.
+NEXT_STEP: Solution complete!
+
+Problem: "Find area of circle, radius = 5" (Task: FIND area)
+Student: "A = πr², A = π(5)², A = 25π ≈ 78.54" ✓ COMPLETE - Found area
+TITLE: Perfect solution!
+HINT: Outstanding! You used the correct formula A = πr², substituted r = 5, calculated 5² = 25, and found the final answer 25π ≈ 78.54. Your work shows all the necessary steps clearly.
+NEXT_STEP: Solution complete! Well done.
+
+Problem: "Simplify: 3x + 2x" (Task: SIMPLIFY)
+Student: "3x + 2x = 5x" ✓ COMPLETE - Simplified
+TITLE: Perfect!
+HINT: Correct! You successfully combined like terms by adding the coefficients (3 + 2 = 5) while keeping the variable x. This is exactly how to simplify like terms.
+NEXT_STEP: Solution complete!
+
+EXAMPLES OF INCOMPLETE SOLUTIONS (give hints for these):
+
+Problem: "Solve 2x + 5 = 13" (Task: SOLVE)
+Student: "2x = 8" ✗ INCOMPLETE - Didn't solve for x yet
 TITLE: Excellent progress!
 HINT: You correctly moved 5 to the right side. Now you need to isolate x by getting rid of the coefficient 2. Dividing both sides by the same number keeps the equation balanced.
 NEXT_STEP: Divide both sides by 2 to find x = 4
 
-Problem: "Find area of circle, radius = 5" | Student wrote "A = πr"
+Problem: "Prove that x² + 3x + 2 is quadratic" (Task: PROVE)
+Student: "x² + 3x + 2" ✗ INCOMPLETE - Just wrote the expression, didn't prove anything
+TITLE: Let's prove it!
+HINT: You've written the expression, but you need to prove it's quadratic. Show that it has the form ax² + bx + c and identify that the highest power is 2.
+NEXT_STEP: Explain why this is quadratic by identifying a=1, b=3, c=2 and noting the degree is 2
+
+Problem: "Find area of circle, radius = 5" (Task: FIND)
+Student: "A = πr" ✗ INCOMPLETE - Wrong formula
 TITLE: You're on the right track!
 HINT: You've got the right formula started. Remember the area formula uses r squared, not just r. The exponent is important because area is two-dimensional.
 NEXT_STEP: Write A = πr² and substitute r = 5
 
-Problem: "Simplify: 3x + 2x" | Blank whiteboard
+Problem: "Simplify: 3x + 2x" (Task: SIMPLIFY)
+Student: Blank whiteboard ✗ NOT STARTED
 TITLE: Let's get started!
 HINT: These are like terms because they both have the variable x. When you have like terms, you can combine them by adding their coefficients (the numbers in front).
 NEXT_STEP: Add the coefficients: 3 + 2 = 5, so the answer is 5x
 
-RULES:
-- Be specific about what you see in their work
-- Don't give the final answer
-- Keep it brief and actionable
-- If blank, guide them to start`;
+DECISION RULES (FOLLOW IN ORDER):
+1. READ THE PROBLEM CAREFULLY - What is the student asked to do? (solve? prove? find? simplify? show?)
+2. READ THE SOLUTION - What did the student write?
+3. MATCH TASK TO SOLUTION:
+   - If asked to "prove/show" → Did they provide explanation/proof? ✓ Complete
+   - If asked to "solve" → Did they find the variable value? ✓ Complete
+   - If asked to "find" → Did they calculate the answer? ✓ Complete
+   - If asked to "simplify" → Did they simplify the expression? ✓ Complete
+4. CHECK CORRECTNESS - Is their work correct for the SPECIFIC task?
+5. RESPOND:
+   - If task is COMPLETE & CORRECT → Say "Perfect!" or "Solution complete!"
+   - If task is INCOMPLETE or WRONG → Give specific hint for the actual task
+   - If blank → Guide them to start the actual task
+6. Keep responses brief and actionable
+
+⚠️ COMMON MISTAKE TO AVOID: Don't assume the task is "solve for x" - READ what the problem actually asks!`;
 
     logger.info(`Sending hint request to Gemini Vision API`);
 
@@ -304,32 +414,91 @@ const parseHintResponse = (response) => {
   };
 };
 
-export const evaluateCanvasImage = async (question, imageBuffer, mimeType = 'image/png') => {
+export const evaluateCanvasImage = async (question, imageBuffer, mimeType = 'image/png', canvasText = null) => {
   try {
     initializeGemini();
 
     const base64Data = imageBuffer.toString('base64');
 
-    const prompt = `Check this student's math work.
+    // Build prompt with canvas text if available
+    let prompt = `Check this student's math work.
 
-PROBLEM: ${question}
+⚠️ READ THE PROBLEM CAREFULLY - Understand what task is being asked!
 
-Look at the whiteboard image. Is their answer correct?
+PROBLEM/QUESTION: ${question}
 
+WHAT IS THE STUDENT ASKED TO DO?
+- Read the problem carefully
+- Identify the specific task (solve, prove, simplify, find, show, etc.)
+`;
+
+    if (canvasText && canvasText.trim().length > 0) {
+      prompt += `
+STUDENT'S WRITTEN SOLUTION (extracted text from canvas):
+${canvasText}
+
+EVALUATION STEPS:
+1. READ THE PROBLEM: What specific task is asked? (solve? prove? find? simplify?)
+2. READ THE SOLUTION: Look at BOTH the whiteboard image AND the extracted text above
+3. CHECK IF TASK IS COMPLETE: Did they complete the SPECIFIC task asked?
+4. VERIFY CORRECTNESS: Is their work correct for that task?
+`;
+    } else {
+      prompt += `
+Look at the whiteboard image.
+
+EVALUATION STEPS:
+1. READ THE PROBLEM: What specific task is asked?
+2. READ THE SOLUTION: What did they write?
+3. CHECK IF TASK IS COMPLETE: Did they complete the task?
+4. VERIFY CORRECTNESS: Is it correct?
+`;
+    }
+
+    prompt += `
 FORMAT:
 RESULT: [CORRECT or INCORRECT or BLANK]
-FEEDBACK: [One sentence]
+FEEDBACK: [One sentence - be specific and encouraging]
 
-EXAMPLES:
-"Solve 2x+5=13" → Student: "x=4" → RESULT: CORRECT | FEEDBACK: Perfect! You found the right answer.
-"7×8=?" → Student: "54" → RESULT: INCORRECT | FEEDBACK: Check your multiplication - 7×8 is not 54.
-"Area of circle r=3" → Student: "28.27" → RESULT: CORRECT | FEEDBACK: Excellent use of A=πr²!
-"Simplify 3x+2x" → Student: "5x²" → RESULT: INCORRECT | FEEDBACK: Add coefficients without changing exponents: 3x+2x=5x.
+IMPORTANT: Look for the FINAL ANSWER. If the student shows complete work with the correct final answer, mark as CORRECT.
+
+EXAMPLES (Note the task type in each problem):
+
+"Solve 2x+5=13" (Task: SOLVE) → Student: "2x+5=13, 2x=8, x=4" → RESULT: CORRECT | FEEDBACK: Perfect! You solved it correctly with clear steps.
+"Solve 2x+5=13" (Task: SOLVE) → Student: "x=4" → RESULT: CORRECT | FEEDBACK: Correct answer! Consider showing your work for full credit.
+"Solve 2x+5=13" (Task: SOLVE) → Student: "2x=8" → RESULT: INCORRECT | FEEDBACK: Good progress, but you need to finish by dividing both sides by 2.
+
+"Prove x²-4 is quadratic" (Task: PROVE) → Student: "x²-4, highest power is 2, so it's quadratic" → RESULT: CORRECT | FEEDBACK: Correct! You identified the degree and proved it's quadratic.
+"Prove x²-4 is quadratic" (Task: PROVE) → Student: "x²-4" → RESULT: INCORRECT | FEEDBACK: You wrote the expression but didn't prove it's quadratic. Explain why the degree makes it quadratic.
+
+"Find area of circle r=3" (Task: FIND) → Student: "A=πr², A=π(3)², A=9π≈28.27" → RESULT: CORRECT | FEEDBACK: Excellent! Complete solution with correct formula and calculation.
+"Find area of circle r=3" (Task: FIND) → Student: "28.27" → RESULT: CORRECT | FEEDBACK: Correct final answer!
+
+"Simplify 3x+2x" (Task: SIMPLIFY) → Student: "3x+2x=5x" → RESULT: CORRECT | FEEDBACK: Perfect! You correctly combined like terms.
+"Simplify 3x+2x" (Task: SIMPLIFY) → Student: "5x²" → RESULT: INCORRECT | FEEDBACK: Add coefficients without changing exponents: 3x+2x=5x.
+
+"Calculate 7×8" (Task: CALCULATE) → Student: "56" → RESULT: CORRECT | FEEDBACK: Correct! 7×8 = 56.
+"Calculate 7×8" (Task: CALCULATE) → Student: "54" → RESULT: INCORRECT | FEEDBACK: Check your multiplication - 7×8 is not 54.
+
 Blank whiteboard → RESULT: BLANK | FEEDBACK: Write your solution so I can check it.
 
-RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work shown. One sentence only.`;
+RULES: 
+- CORRECT = has the right final answer (with or without steps shown)
+- INCORRECT = wrong answer OR incomplete work without final answer
+- BLANK = no work shown
+- Be encouraging and specific in feedback
+- One sentence only`;
 
-    logger.info(`Sending image to Gemini Vision API - Size: ${imageBuffer.length} bytes, MIME: ${mimeType}`);
+    logger.info(`=== EVALUATION REQUEST ===`);
+    logger.info(`Question: ${question.substring(0, 100)}`);
+    logger.info(`Image size: ${imageBuffer.length} bytes, MIME: ${mimeType}`);
+    logger.info(`Canvas text: ${canvasText ? 'YES' : 'NO'}`);
+    if (canvasText) {
+      logger.info(`Canvas text content (first 200 chars): ${canvasText.substring(0, 200)}`);
+    }
+    logger.info(`========================`);
+    
+    logger.info(`Sending image to Gemini Vision API`);
 
     // Retry logic with smarter error handling
     let result;
