@@ -10,6 +10,9 @@ import { errorHandler } from './middlewares/errorHandler.js';
 
 loadEnv();
 
+console.log('DEBUG: MOCK_AUTH value:', process.env.MOCK_AUTH);
+console.log('DEBUG: Type of MOCK_AUTH:', typeof process.env.MOCK_AUTH);
+
 const isMockAuth = process.env.MOCK_AUTH !== 'false';
 if (isMockAuth) {
   logger.warn('MOCK_AUTH is enabled. Supabase will not be initialised.');

@@ -15,7 +15,7 @@ const initializeGemini = () => {
   }
   if (!model) {
     const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
-    model = genAI.getGenerativeModel({ 
+    model = genAI.getGenerativeModel({
       model: modelName,
       safetySettings: [
         {
@@ -45,7 +45,7 @@ export const generateHintFromImage = async (question, imageBuffer, mimeType = 'i
     initializeGemini();
 
     const base64Data = imageBuffer.toString('base64');
-    
+
     logger.info(`=== HINT REQUEST ===`);
     logger.info(`Question: ${question.substring(0, 100)}`);
     logger.info(`Image size: ${imageBuffer.length} bytes`);
@@ -93,16 +93,16 @@ RULES:
     let result;
     let lastError;
     const maxRetries = 3; // Optimized: 3 retries is enough with paid API
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         logger.info(`Gemini hint API attempt ${attempt}/${maxRetries}`);
-        
+
         // Create a timeout promise
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000);
         });
-        
+
         // Race between API call and timeout
         const apiPromise = model.generateContent({
           contents: [
@@ -128,26 +128,26 @@ RULES:
             topK: 40,
           },
         });
-        
+
         result = await Promise.race([apiPromise, timeoutPromise]);
-        
+
         logger.info(`✅ Gemini hint API call succeeded on attempt ${attempt}`);
         break; // Success, exit retry loop
-        
+
       } catch (error) {
         lastError = error;
         const errorMsg = error.message || error.toString();
         logger.warn(`❌ Gemini hint API attempt ${attempt}/${maxRetries} failed: ${errorMsg}`);
-        
+
         // Check if it's a rate limit error
-        const isRateLimit = errorMsg.toLowerCase().includes('rate limit') || 
-                           errorMsg.toLowerCase().includes('quota') ||
-                           errorMsg.toLowerCase().includes('429');
-        
+        const isRateLimit = errorMsg.toLowerCase().includes('rate limit') ||
+          errorMsg.toLowerCase().includes('quota') ||
+          errorMsg.toLowerCase().includes('429');
+
         // Check if it's a timeout
         const isTimeout = errorMsg.toLowerCase().includes('timeout') ||
-                         errorMsg.toLowerCase().includes('timed out');
-        
+          errorMsg.toLowerCase().includes('timed out');
+
         if (attempt < maxRetries) {
           // Adjust wait time based on error type
           let baseWait;
@@ -158,7 +158,7 @@ RULES:
           } else {
             baseWait = 1000 * Math.pow(2, attempt - 1); // Standard exponential backoff
           }
-          
+
           const jitter = Math.random() * 500;
           const waitTime = Math.min(baseWait + jitter, 10000);
           logger.info(`⏳ Waiting ${Math.round(waitTime)}ms before retry...`);
@@ -168,7 +168,7 @@ RULES:
         }
       }
     }
-    
+
     if (!result) {
       const errorMsg = lastError?.message || 'Unknown error';
       logger.error(`Final error: ${errorMsg}`);
@@ -177,14 +177,14 @@ RULES:
 
     // Extract response text - Gemini SDK provides text() method on response
     let response = null;
-    
+
     try {
       logger.info(`📊 Checking result structure...`);
       logger.info(`  - result exists: ${!!result}`);
       logger.info(`  - result.response exists: ${!!result?.response}`);
       logger.info(`  - result.response.text type: ${typeof result?.response?.text}`);
       logger.info(`  - result.response keys: ${result?.response ? Object.keys(result.response).join(', ') : 'none'}`);
-      
+
       // The Gemini SDK response.text() is a method that returns the text directly
       if (result && result.response && typeof result.response.text === 'function') {
         response = result.response.text();
@@ -205,13 +205,13 @@ RULES:
           logger.error(`Candidates: ${JSON.stringify(result.response.candidates, null, 2).substring(0, 500)}`);
         }
       }
-      
+
       // Check if response was blocked by safety filters
       if (result?.response?.promptFeedback?.blockReason) {
         logger.error(`❌ Response blocked by safety filter: ${result.response.promptFeedback.blockReason}`);
         throw new Error(`Content was blocked by safety filters. Please try rephrasing your question.`);
       }
-      
+
       // Check finish reason
       const finishReason = result?.response?.candidates?.[0]?.finishReason;
       if (finishReason === 'MAX_TOKENS') {
@@ -228,7 +228,7 @@ RULES:
           }
         }
       }
-      
+
     } catch (extractError) {
       logger.error(`❌ Error extracting response: ${extractError.message}`);
       logger.error(`Error stack: ${extractError.stack}`);
@@ -241,7 +241,7 @@ RULES:
       const finishReason = result?.response?.candidates?.[0]?.finishReason;
       logger.error(`Finish reason: ${finishReason}`);
       logger.error(`Full result object: ${JSON.stringify(result, null, 2).substring(0, 1000)}`);
-      
+
       if (finishReason === 'MAX_TOKENS') {
         throw new Error('Response was cut off due to token limit. This has been logged and will be fixed. Please try again.');
       }
@@ -335,16 +335,16 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
     let result;
     let lastError;
     const maxRetries = 3; // Optimized: 3 retries is enough with paid API
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         logger.info(`Gemini evaluation attempt ${attempt}/${maxRetries}`);
-        
+
         // Create a timeout promise
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000);
         });
-        
+
         // Race between API call and timeout
         const apiPromise = model.generateContent({
           contents: [
@@ -370,24 +370,24 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
             topK: 40,
           },
         });
-        
+
         result = await Promise.race([apiPromise, timeoutPromise]);
-        
+
         logger.info(`✅ Gemini evaluation succeeded on attempt ${attempt}`);
         break; // Success
-        
+
       } catch (error) {
         lastError = error;
         const errorMsg = error.message || error.toString();
         logger.warn(`❌ Gemini evaluation attempt ${attempt}/${maxRetries} failed: ${errorMsg}`);
-        
+
         // Check error type for smarter retry
-        const isRateLimit = errorMsg.toLowerCase().includes('rate limit') || 
-                           errorMsg.toLowerCase().includes('quota') ||
-                           errorMsg.toLowerCase().includes('429');
+        const isRateLimit = errorMsg.toLowerCase().includes('rate limit') ||
+          errorMsg.toLowerCase().includes('quota') ||
+          errorMsg.toLowerCase().includes('429');
         const isTimeout = errorMsg.toLowerCase().includes('timeout') ||
-                         errorMsg.toLowerCase().includes('timed out');
-        
+          errorMsg.toLowerCase().includes('timed out');
+
         if (attempt < maxRetries) {
           let baseWait;
           if (isRateLimit) {
@@ -397,7 +397,7 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
           } else {
             baseWait = 1000 * Math.pow(2, attempt - 1);
           }
-          
+
           const jitter = Math.random() * 500;
           const waitTime = Math.min(baseWait + jitter, 10000);
           logger.info(`⏳ Waiting ${Math.round(waitTime)}ms before retry...`);
@@ -407,7 +407,7 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
         }
       }
     }
-    
+
     if (!result) {
       const errorMsg = lastError?.message || 'Unknown error';
       logger.error(`Final error: ${errorMsg}`);
@@ -418,14 +418,14 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
 
     // Extract response text - Gemini SDK provides text() method on response
     let response = null;
-    
+
     try {
       logger.info(`📊 Checking evaluation result structure...`);
       logger.info(`  - result exists: ${!!result}`);
       logger.info(`  - result.response exists: ${!!result?.response}`);
       logger.info(`  - result.response.text type: ${typeof result?.response?.text}`);
       logger.info(`  - result.response keys: ${result?.response ? Object.keys(result.response).join(', ') : 'none'}`);
-      
+
       // The Gemini SDK response.text() is a method that returns the text directly
       if (result && result.response && typeof result.response.text === 'function') {
         response = result.response.text();
@@ -446,19 +446,19 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
           logger.error(`Candidates: ${JSON.stringify(result.response.candidates, null, 2).substring(0, 500)}`);
         }
       }
-      
+
       // Check if response was blocked by safety filters
       if (result?.response?.promptFeedback?.blockReason) {
         logger.error(`❌ Evaluation response blocked by safety filter: ${result.response.promptFeedback.blockReason}`);
         throw new Error(`Content was blocked by safety filters. Please try rephrasing your question.`);
       }
-      
+
       // Check finish reason
       const finishReason = result?.response?.candidates?.[0]?.finishReason;
       if (finishReason === 'MAX_TOKENS') {
         const thoughtsUsed = result.response.usageMetadata?.thoughtsTokenCount || 0;
         logger.warn(`⚠️ Evaluation hit MAX_TOKENS. Thinking tokens used: ${thoughtsUsed}`);
-        
+
         // Try to get partial response from parts
         if (result?.response?.candidates?.[0]?.content?.parts) {
           const partialResponse = result.response.candidates[0].content.parts
@@ -475,7 +475,7 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
           }
         }
       }
-      
+
     } catch (extractError) {
       logger.error(`❌ Error extracting evaluation response: ${extractError.message}`);
       logger.error(`Error stack: ${extractError.stack}`);
@@ -488,7 +488,7 @@ RULES: CORRECT=right answer+method, INCORRECT=wrong answer/method, BLANK=no work
       const finishReason = result?.response?.candidates?.[0]?.finishReason;
       logger.error(`Finish reason: ${finishReason}`);
       logger.error(`Full result object: ${JSON.stringify(result, null, 2).substring(0, 1000)}`);
-      
+
       if (finishReason === 'MAX_TOKENS') {
         throw new Error('Response was cut off due to token limit. This has been logged and will be fixed. Please try again.');
       }

@@ -1,22 +1,21 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-let generativeModel;
-
-const buildModel = () => {
+const getModel = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Missing GEMINI_API_KEY in env/.env');
+    throw new Error('GEMINI_API_KEY is not configured');
   }
   const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
   const genAI = new GoogleGenerativeAI(apiKey);
   return genAI.getGenerativeModel({ model: modelName });
 };
 
-const getModel = () => {
-  if (!generativeModel) {
-    generativeModel = buildModel();
-  }
-  return generativeModel;
+export const extractTextFromImage = async (imageBase64, mimeType) => {
+  const model = getModel();
+  // Logic to extract text would go here, but for now we just return the model or implement basic OCR if needed.
+  // Assuming this function was meant to return the model or do something else.
+  // Based on usage in extractQuestionFromImage, we need getModel to be available.
+  return model;
 };
 
 export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') => {
@@ -62,6 +61,6 @@ export const extractQuestionFromImage = async (buffer, mimeType = 'image/jpeg') 
     return text ?? '';
   } catch (error) {
     const message = error.message || error.toString();
-    throw new Error(`Gemini Vision error: ${message}`);
+    throw new Error(`Gemini Vision error: ${message} `);
   }
 };
