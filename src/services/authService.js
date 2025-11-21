@@ -131,6 +131,18 @@ export const sendOtpCode = async ({ email, shouldCreateUser = false, displayName
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
+  // 2.5 Cleanup expired OTPs for this user to keep table clean
+  const { error: cleanupError } = await client
+    .from('verification_codes')
+    .delete()
+    .eq('email', email)
+    .lt('expires_at', new Date().toISOString());
+
+  if (cleanupError) {
+    console.warn('⚠️ Failed to cleanup expired OTPs:', cleanupError);
+    // Not critical, so we continue
+  }
+
   // 3. Upsert in 'verification_codes' table (update if exists, insert if not)
   const { error: dbError } = await client
     .from('verification_codes')
@@ -258,11 +270,18 @@ export const verifyOtpCode = async ({ email, token, displayName }) => {
   }
 
   // 5. Clean up used OTP
-  await client
+  const { error: deleteError } = await client
     .from('verification_codes')
     .delete()
     .eq('email', email)
     .eq('code', token);
+
+  if (deleteError) {
+    console.error('❌ Failed to delete used OTP:', deleteError);
+    // We don't throw here because the user is already verified/logged in
+  } else {
+    console.log('✅ Used OTP deleted successfully');
+  }
 
   if (displayName) {
     const { error: profileError } = await client.from('profiles').upsert({
